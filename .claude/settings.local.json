@@ -5,7 +5,10 @@
       "Bash(npm install)",
       "Bash(npm run build:*)",
       "Bash(npm run lint:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git add:*)"
     ]
   }
 }

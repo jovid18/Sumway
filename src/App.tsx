@@ -19,6 +19,12 @@ interface Student {
 
 const STORAGE_KEY = 'sumway-items';
 const STUDENTS_STORAGE_KEY = 'sumway-students';
+const NAMES_STORAGE_KEY = 'sumway-names';
+
+interface NamesData {
+  itemNames: string[];
+  elementNames: string[][];
+}
 
 const loadItemsFromStorage = (): Item[] => {
   try {
@@ -30,6 +36,27 @@ const loadItemsFromStorage = (): Item[] => {
     // 파싱 실패 시 기본값 사용
   }
   return [[[0]]];
+};
+
+const loadNamesFromStorage = (items: Item[]): NamesData => {
+  let savedNames: NamesData = { itemNames: [], elementNames: [] };
+
+  try {
+    const saved = localStorage.getItem(NAMES_STORAGE_KEY);
+    if (saved) {
+      savedNames = JSON.parse(saved);
+    }
+  } catch {
+    // 파싱 실패 시 기본값 사용
+  }
+
+  // items 길이에 맞게 동기화
+  const itemNames = items.map((_, i) => savedNames.itemNames?.[i] || `항목 ${i + 1}`);
+  const elementNames = items.map((item, i) =>
+    item.map((_, j) => savedNames.elementNames?.[i]?.[j] || `평가 요소 ${j + 1}`)
+  );
+
+  return { itemNames, elementNames };
 };
 
 const loadStudentsFromStorage = (): { students: Student[]; nextId: number } => {
@@ -52,6 +79,14 @@ function App() {
   const savedStudents = loadStudentsFromStorage();
   const [students, setStudents] = useState<Student[]>(savedStudents.students);
   const [nextStudentId, setNextStudentId] = useState(savedStudents.nextId);
+  const [itemNames, setItemNames] = useState<string[]>(() => {
+    const initialItems = loadItemsFromStorage();
+    return loadNamesFromStorage(initialItems).itemNames;
+  });
+  const [elementNames, setElementNames] = useState<string[][]>(() => {
+    const initialItems = loadItemsFromStorage();
+    return loadNamesFromStorage(initialItems).elementNames;
+  });
 
   // 학생 데이터 변경 시 localStorage에 저장
   useEffect(() => {
@@ -60,6 +95,14 @@ function App() {
       JSON.stringify({ students, nextId: nextStudentId })
     );
   }, [students, nextStudentId]);
+
+  // 이름 데이터 변경 시 localStorage에 저장
+  useEffect(() => {
+    localStorage.setItem(
+      NAMES_STORAGE_KEY,
+      JSON.stringify({ itemNames, elementNames })
+    );
+  }, [itemNames, elementNames]);
 
   // 전체 점수에서 항목별 점수 조합 찾기
   const findItemCombinations = (
@@ -219,12 +262,29 @@ function App() {
   // 전체 초기화
   const resetAll = () => {
     setItems([[[0]]]);
+    setItemNames(['항목 1']);
+    setElementNames([['평가 요소 1']]);
     setResults(null);
     setError(null);
     setStudents([]);
     setNextStudentId(1);
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(STUDENTS_STORAGE_KEY);
+    localStorage.removeItem(NAMES_STORAGE_KEY);
+  };
+
+  // 이름 업데이트 함수
+  const updateItemName = (itemIndex: number, name: string) => {
+    const newNames = [...itemNames];
+    newNames[itemIndex] = name;
+    setItemNames(newNames);
+  };
+
+  const updateElementName = (itemIndex: number, elementIndex: number, name: string) => {
+    const newNames = [...elementNames];
+    newNames[itemIndex] = [...newNames[itemIndex]];
+    newNames[itemIndex][elementIndex] = name;
+    setElementNames(newNames);
   };
 
   // CSV 내보내기
@@ -234,10 +294,12 @@ function App() {
     // 헤더 생성
     const headers: string[] = ['학생 이름'];
     items.forEach((item, itemIndex) => {
+      const itemName = itemNames[itemIndex] || `항목 ${itemIndex + 1}`;
       item.forEach((_, elemIndex) => {
-        headers.push(`항목${itemIndex + 1}-요소${elemIndex + 1}`);
+        const elemName = elementNames[itemIndex]?.[elemIndex] || `요소 ${elemIndex + 1}`;
+        headers.push(`${itemName}-${elemName}`);
       });
-      headers.push(`항목${itemIndex + 1} 총합`);
+      headers.push(`${itemName} 총합`);
     });
     headers.push('전체 총합');
 
@@ -270,28 +332,61 @@ function App() {
     // 다운로드
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `학생점수_${new Date().toISOString().slice(0, 10)}.csv`;
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+    link.download = `학생점수_${timestamp}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
   };
 
   // 항목 관리
   const addItem = () => {
+    const newItemIndex = items.length + 1;
     setItems([...items, [[0]]]);
+    setItemNames([...itemNames, `항목 ${newItemIndex}`]);
+    setElementNames([...elementNames, [`평가 요소 1`]]);
     clearResults();
   };
 
   const removeItem = (itemIndex: number) => {
     if (items.length <= 1) return;
     setItems(items.filter((_, i) => i !== itemIndex));
+    setItemNames(itemNames.filter((_, i) => i !== itemIndex));
+    setElementNames(elementNames.filter((_, i) => i !== itemIndex));
+    clearResults();
+  };
+
+  const copyItem = (itemIndex: number) => {
+    const copiedItem = items[itemIndex].map((element) => [...element]);
+    const newItems = [...items];
+    newItems.splice(itemIndex + 1, 0, copiedItem);
+    setItems(newItems);
+
+    const copiedItemName = `${itemNames[itemIndex]} (복사)`;
+    const newItemNames = [...itemNames];
+    newItemNames.splice(itemIndex + 1, 0, copiedItemName);
+    setItemNames(newItemNames);
+
+    const copiedElementNames = [...elementNames[itemIndex]];
+    const newElementNames = [...elementNames];
+    newElementNames.splice(itemIndex + 1, 0, copiedElementNames);
+    setElementNames(newElementNames);
+
     clearResults();
   };
 
   // 평가 요소 관리
   const addEvaluationElement = (itemIndex: number) => {
+    const newElementIndex = items[itemIndex].length + 1;
     const newItems = [...items];
     newItems[itemIndex] = [...newItems[itemIndex], [0]];
     setItems(newItems);
+
+    const newNames = [...elementNames];
+    newNames[itemIndex] = [...newNames[itemIndex], `평가 요소 ${newElementIndex}`];
+    setElementNames(newNames);
+
     clearResults();
   };
 
@@ -300,6 +395,27 @@ function App() {
     const newItems = [...items];
     newItems[itemIndex] = newItems[itemIndex].filter((_, i) => i !== elementIndex);
     setItems(newItems);
+
+    const newNames = [...elementNames];
+    newNames[itemIndex] = newNames[itemIndex].filter((_, i) => i !== elementIndex);
+    setElementNames(newNames);
+
+    clearResults();
+  };
+
+  const copyEvaluationElement = (itemIndex: number, elementIndex: number) => {
+    const copiedElement = [...items[itemIndex][elementIndex]];
+    const newItems = [...items];
+    newItems[itemIndex] = [...newItems[itemIndex]];
+    newItems[itemIndex].splice(elementIndex + 1, 0, copiedElement);
+    setItems(newItems);
+
+    const copiedName = `${elementNames[itemIndex][elementIndex]} (복사)`;
+    const newNames = [...elementNames];
+    newNames[itemIndex] = [...newNames[itemIndex]];
+    newNames[itemIndex].splice(elementIndex + 1, 0, copiedName);
+    setElementNames(newNames);
+
     clearResults();
   };
 
@@ -425,30 +541,62 @@ function App() {
               <div className="card bg-white shadow-xl">
                 <div className="card-body">
                   <div className="flex justify-between items-center mb-4">
-                    <h2 className="card-title text-2xl">항목 {itemIndex + 1}</h2>
-                    <button
-                      className="btn btn-sm px-4 py-2 bg-red-500 hover:bg-red-600 text-white border-none shadow-md"
-                      onClick={() => removeItem(itemIndex)}
-                      disabled={items.length <= 1}
-                    >
-                      항목 삭제
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400 text-sm">#{itemIndex + 1}</span>
+                      <input
+                        type="text"
+                        className="input input-bordered input-sm text-xl font-bold bg-white w-48"
+                        value={itemNames[itemIndex] ?? ''}
+                        onChange={(e) => updateItemName(itemIndex, e.target.value)}
+                        placeholder="항목 이름"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        className="btn btn-sm px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white border-none shadow-md"
+                        onClick={() => copyItem(itemIndex)}
+                      >
+                        항목 복사
+                      </button>
+                      <button
+                        className="btn btn-sm px-4 py-2 bg-red-500 hover:bg-red-600 text-white border-none shadow-md"
+                        onClick={() => removeItem(itemIndex)}
+                        disabled={items.length <= 1}
+                      >
+                        항목 삭제
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-4 pl-4 border-l-4 border-purple-300">
                     {item.map((element, elementIndex) => (
                       <div key={elementIndex} className="bg-gray-50 p-4 rounded-lg">
                         <div className="flex justify-between items-center mb-2">
-                          <h3 className="font-semibold text-gray-700">
-                            평가 요소 {elementIndex + 1}
-                          </h3>
-                          <button
-                            className="btn btn-xs px-3 py-1 bg-red-400 hover:bg-red-500 text-white border-none"
-                            onClick={() => removeEvaluationElement(itemIndex, elementIndex)}
-                            disabled={item.length <= 1}
-                          >
-                            삭제
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-400 text-xs">#{elementIndex + 1}</span>
+                            <input
+                              type="text"
+                              className="input input-bordered input-xs font-semibold bg-white w-32"
+                              value={elementNames[itemIndex]?.[elementIndex] ?? ''}
+                              onChange={(e) => updateElementName(itemIndex, elementIndex, e.target.value)}
+                              placeholder="평가 요소 이름"
+                            />
+                          </div>
+                          <div className="flex gap-1">
+                            <button
+                              className="btn btn-xs px-3 py-1 bg-blue-400 hover:bg-blue-500 text-white border-none"
+                              onClick={() => copyEvaluationElement(itemIndex, elementIndex)}
+                            >
+                              복사
+                            </button>
+                            <button
+                              className="btn btn-xs px-3 py-1 bg-red-400 hover:bg-red-500 text-white border-none"
+                              onClick={() => removeEvaluationElement(itemIndex, elementIndex)}
+                              disabled={item.length <= 1}
+                            >
+                              삭제
+                            </button>
+                          </div>
                         </div>
 
                         <div className="flex flex-wrap gap-2 items-center">
@@ -583,11 +731,11 @@ function App() {
                     <thead>
                       <tr className="bg-gray-100">
                         <th className="text-center w-16">#</th>
-                        <th>이름</th>
+                        <th className="w-32">이름</th>
                         <th className="w-40">전체 점수</th>
                         {items.map((_, itemIndex) => (
                           <th key={itemIndex} className="text-center">
-                            항목 {itemIndex + 1}
+                            {itemNames[itemIndex] || `항목 ${itemIndex + 1}`}
                           </th>
                         ))}
                         <th className="text-center w-20">삭제</th>
@@ -600,7 +748,7 @@ function App() {
                           <td>
                             <input
                               type="text"
-                              className="input input-bordered input-sm w-full max-w-xs bg-white"
+                              className="input input-bordered input-sm w-32 bg-white"
                               value={student.name}
                               onChange={(e) => updateStudentName(student.id, e.target.value)}
                               placeholder="학생 이름"
@@ -628,7 +776,7 @@ function App() {
                                           <span
                                             key={elemIndex}
                                             className="badge badge-sm badge-outline"
-                                            title={`평가요소 ${elemIndex + 1}`}
+                                            title={elementNames[itemIndex]?.[elemIndex] || `평가요소 ${elemIndex + 1}`}
                                           >
                                             {elemScore}
                                           </span>
