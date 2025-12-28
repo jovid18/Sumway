@@ -8,7 +8,9 @@
       "Bash(mkdir:*)",
       "Bash(git commit:*)",
       "Bash(git push)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Skill(git)",
+      "Bash(git push:*)"
     ]
   }
 }

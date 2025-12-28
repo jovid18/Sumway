@@ -726,7 +726,7 @@ function App() {
                   학생을 추가해주세요
                 </p>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="overflow-visible">
                   <table className="table w-full">
                     <thead>
                       <tr className="bg-gray-100">

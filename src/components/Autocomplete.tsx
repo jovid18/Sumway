@@ -137,7 +137,7 @@ export function Autocomplete({
       </div>
 
       {isOpen && filteredOptions.length > 0 && (
-        <ul className="absolute z-50 w-full bottom-full mb-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+        <ul className="absolute z-[100] w-full bottom-full mb-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
           {filteredOptions.map((option, index) => (
             <li
               key={option}
@@ -156,7 +156,7 @@ export function Autocomplete({
       )}
 
       {isOpen && filteredOptions.length === 0 && inputValue && (
-        <div className="absolute z-50 w-full bottom-full mb-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-gray-500 text-sm">
+        <div className="absolute z-[100] w-full bottom-full mb-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-gray-500 text-sm">
           일치하는 점수가 없습니다
         </div>
       )}
