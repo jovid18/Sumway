@@ -694,14 +694,19 @@ function App() {
               <div className="flex justify-between items-center mb-4">
                 <h2 className="card-title text-xl">학생 점수 부여</h2>
                 <div className="flex gap-2 items-center">
-                  <input
-                    type="number"
-                    className="input input-bordered input-sm w-20 bg-white"
-                    value={addCount}
-                    min="1"
-                    onChange={(e) => setAddCount(e.target.value)}
-                    title="추가할 학생 수"
-                  />
+                  <div className="relative w-20">
+                    <input
+                      type="number"
+                      className="input input-bordered input-sm w-full bg-white pr-7"
+                      value={addCount}
+                      min="1"
+                      onChange={(e) => setAddCount(e.target.value)}
+                      title="추가할 학생 수"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500 pointer-events-none">
+                      명
+                    </span>
+                  </div>
                   <button
                     className="btn btn-sm px-4 py-2 bg-green-500 hover:bg-green-600 text-white border-none shadow-md"
                     onClick={() => addStudent(Number(addCount))}
