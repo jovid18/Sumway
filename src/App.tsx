@@ -79,7 +79,7 @@ function App() {
   const savedStudents = loadStudentsFromStorage();
   const [students, setStudents] = useState<Student[]>(savedStudents.students);
   const [nextStudentId, setNextStudentId] = useState(savedStudents.nextId);
-  const [addCount, setAddCount] = useState(1);
+  const [addCount, setAddCount] = useState('1');
   const [itemNames, setItemNames] = useState<string[]>(() => {
     const initialItems = loadItemsFromStorage();
     return loadNamesFromStorage(initialItems).itemNames;
@@ -699,12 +699,12 @@ function App() {
                     className="input input-bordered input-sm w-20 bg-white"
                     value={addCount}
                     min="1"
-                    onChange={(e) => setAddCount(Number(e.target.value))}
+                    onChange={(e) => setAddCount(e.target.value)}
                     title="추가할 학생 수"
                   />
                   <button
                     className="btn btn-sm px-4 py-2 bg-green-500 hover:bg-green-600 text-white border-none shadow-md"
-                    onClick={() => addStudent(addCount)}
+                    onClick={() => addStudent(Number(addCount))}
                   >
                     + 학생 추가
                   </button>
