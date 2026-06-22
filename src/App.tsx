@@ -53,7 +53,7 @@ const loadNamesFromStorage = (items: Item[]): NamesData => {
   // items 길이에 맞게 동기화
   const itemNames = items.map((_, i) => savedNames.itemNames?.[i] || `항목 ${i + 1}`);
   const elementNames = items.map((item, i) =>
-    item.map((_, j) => savedNames.elementNames?.[i]?.[j] || `평가 요소 ${j + 1}`)
+    item.map((_, j) => savedNames.elementNames?.[i]?.[j] || `평가 요소 ${j + 1}`),
   );
 
   return { itemNames, elementNames };
@@ -79,6 +79,7 @@ function App() {
   const savedStudents = loadStudentsFromStorage();
   const [students, setStudents] = useState<Student[]>(savedStudents.students);
   const [nextStudentId, setNextStudentId] = useState(savedStudents.nextId);
+  const [addCount, setAddCount] = useState(1);
   const [itemNames, setItemNames] = useState<string[]>(() => {
     const initialItems = loadItemsFromStorage();
     return loadNamesFromStorage(initialItems).itemNames;
@@ -90,25 +91,16 @@ function App() {
 
   // 학생 데이터 변경 시 localStorage에 저장
   useEffect(() => {
-    localStorage.setItem(
-      STUDENTS_STORAGE_KEY,
-      JSON.stringify({ students, nextId: nextStudentId })
-    );
+    localStorage.setItem(STUDENTS_STORAGE_KEY, JSON.stringify({ students, nextId: nextStudentId }));
   }, [students, nextStudentId]);
 
   // 이름 데이터 변경 시 localStorage에 저장
   useEffect(() => {
-    localStorage.setItem(
-      NAMES_STORAGE_KEY,
-      JSON.stringify({ itemNames, elementNames })
-    );
+    localStorage.setItem(NAMES_STORAGE_KEY, JSON.stringify({ itemNames, elementNames }));
   }, [itemNames, elementNames]);
 
   // 전체 점수에서 항목별 점수 조합 찾기
-  const findItemCombinations = (
-    targetSum: number,
-    itemResults: number[][]
-  ): number[][] => {
+  const findItemCombinations = (targetSum: number, itemResults: number[][]): number[][] => {
     const combinations: number[][] = [];
 
     const backtrack = (index: number, currentSum: number, current: number[]) => {
@@ -133,10 +125,7 @@ function App() {
   };
 
   // 항목 점수에서 평가요소별 점수 조합 찾기
-  const findElementCombinations = (
-    targetSum: number,
-    elements: number[][]
-  ): number[][] => {
+  const findElementCombinations = (targetSum: number, elements: number[][]): number[][] => {
     const combinations: number[][] = [];
 
     const backtrack = (index: number, currentSum: number, current: number[]) => {
@@ -188,18 +177,17 @@ function App() {
   };
 
   // 학생 관리
-  const addStudent = () => {
-    setStudents([
-      ...students,
-      {
-        id: nextStudentId,
-        name: `학생 ${nextStudentId}`,
-        totalScore: null,
-        itemScores: [],
-        elementScores: [],
-      },
-    ]);
-    setNextStudentId(nextStudentId + 1);
+  const addStudent = (count: number = 1) => {
+    const n = Math.max(1, Math.floor(count) || 1);
+    const newStudents: Student[] = Array.from({ length: n }, (_, i) => ({
+      id: nextStudentId + i,
+      name: `학생 ${nextStudentId + i}`,
+      totalScore: null,
+      itemScores: [],
+      elementScores: [],
+    }));
+    setStudents([...students, ...newStudents]);
+    setNextStudentId(nextStudentId + n);
   };
 
   const removeStudent = (id: number) => {
@@ -214,10 +202,8 @@ function App() {
     if (score === null || !results) {
       setStudents(
         students.map((s) =>
-          s.id === id
-            ? { ...s, totalScore: null, itemScores: [], elementScores: [] }
-            : s
-        )
+          s.id === id ? { ...s, totalScore: null, itemScores: [], elementScores: [] } : s,
+        ),
       );
       return;
     }
@@ -232,10 +218,7 @@ function App() {
     // 각 항목에 대해 평가요소별 점수 조합 찾기
     const elementScores: number[][] = [];
     for (let i = 0; i < items.length; i++) {
-      const elementCombinations = findElementCombinations(
-        selectedItemScores[i],
-        items[i]
-      );
+      const elementCombinations = findElementCombinations(selectedItemScores[i], items[i]);
       const selectedElements = selectBalancedCombination(elementCombinations);
       elementScores.push(selectedElements);
     }
@@ -249,8 +232,8 @@ function App() {
               itemScores: selectedItemScores,
               elementScores,
             }
-          : s
-      )
+          : s,
+      ),
     );
   };
 
@@ -320,10 +303,7 @@ function App() {
     });
 
     // CSV 문자열 생성
-    const csvContent = [
-      headers.join(','),
-      ...rows.map((row) => row.join(',')),
-    ].join('\n');
+    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
 
     // BOM 추가 (한글 지원)
     const bom = '\uFEFF';
@@ -444,7 +424,7 @@ function App() {
     if (items[itemIndex][elementIndex].length <= 1) return;
     const newItems = [...items];
     newItems[itemIndex][elementIndex] = newItems[itemIndex][elementIndex].filter(
-      (_, i) => i !== numIndex
+      (_, i) => i !== numIndex,
     );
     setItems(newItems);
     clearResults();
@@ -454,7 +434,7 @@ function App() {
     itemIndex: number,
     elementIndex: number,
     numIndex: number,
-    value: string
+    value: string,
   ) => {
     const newItems = [...items];
     newItems[itemIndex][elementIndex][numIndex] = value === '' ? 0 : Number(value);
@@ -472,7 +452,7 @@ function App() {
             setError(
               `항목 ${i + 1}의 평가 요소 ${j + 1}의 ${
                 k + 1
-              }번째 숫자가 유효하지 않습니다. (0 초과 숫자 필요)`
+              }번째 숫자가 유효하지 않습니다. (0 초과 숫자 필요)`,
             );
             return false;
           }
@@ -520,6 +500,13 @@ function App() {
     setResults({ itemResults, totalResult });
     setError(null);
   };
+
+  // 학생 통계 (점수가 유효하게 채워진 학생 기준)
+  const filledStudents = students.filter((s) => s.totalScore !== null);
+  const averageScore =
+    filledStudents.length > 0
+      ? filledStudents.reduce((sum, s) => sum + (s.totalScore ?? 0), 0) / filledStudents.length
+      : null;
 
   return (
     <div className="min-h-screen bg-base-200 p-8">
@@ -578,7 +565,9 @@ function App() {
                               type="text"
                               className="input input-bordered input-xs font-semibold bg-white w-32"
                               value={elementNames[itemIndex]?.[elementIndex] ?? ''}
-                              onChange={(e) => updateElementName(itemIndex, elementIndex, e.target.value)}
+                              onChange={(e) =>
+                                updateElementName(itemIndex, elementIndex, e.target.value)
+                              }
                               placeholder="평가 요소 이름"
                             />
                           </div>
@@ -704,10 +693,18 @@ function App() {
             <div className="card-body">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="card-title text-xl">학생 점수 부여</h2>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="number"
+                    className="input input-bordered input-sm w-20 bg-white"
+                    value={addCount}
+                    min="1"
+                    onChange={(e) => setAddCount(Number(e.target.value))}
+                    title="추가할 학생 수"
+                  />
                   <button
                     className="btn btn-sm px-4 py-2 bg-green-500 hover:bg-green-600 text-white border-none shadow-md"
-                    onClick={addStudent}
+                    onClick={() => addStudent(addCount)}
                   >
                     + 학생 추가
                   </button>
@@ -721,10 +718,29 @@ function App() {
                 </div>
               </div>
 
+              {students.length > 0 && (
+                <div className="flex flex-wrap gap-4 mb-4">
+                  <div className="stat bg-gray-50 rounded-lg px-4 py-2 flex-1 min-w-[140px]">
+                    <div className="stat-title text-xs text-gray-500">전체 학생</div>
+                    <div className="stat-value text-2xl text-gray-700">{students.length}명</div>
+                  </div>
+                  <div className="stat bg-green-50 rounded-lg px-4 py-2 flex-1 min-w-[140px]">
+                    <div className="stat-title text-xs text-gray-500">점수 부여됨</div>
+                    <div className="stat-value text-2xl text-green-600">
+                      {filledStudents.length}명
+                    </div>
+                  </div>
+                  <div className="stat bg-blue-50 rounded-lg px-4 py-2 flex-1 min-w-[140px]">
+                    <div className="stat-title text-xs text-gray-500">평균 점수</div>
+                    <div className="stat-value text-2xl text-blue-600">
+                      {averageScore !== null ? averageScore.toFixed(2) : '-'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {students.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">
-                  학생을 추가해주세요
-                </p>
+                <p className="text-gray-500 text-center py-4">학생을 추가해주세요</p>
               ) : (
                 <div className="overflow-visible">
                   <table className="table w-full">
@@ -776,11 +792,14 @@ function App() {
                                           <span
                                             key={elemIndex}
                                             className="badge badge-sm badge-outline"
-                                            title={elementNames[itemIndex]?.[elemIndex] || `평가요소 ${elemIndex + 1}`}
+                                            title={
+                                              elementNames[itemIndex]?.[elemIndex] ||
+                                              `평가요소 ${elemIndex + 1}`
+                                            }
                                           >
                                             {elemScore}
                                           </span>
-                                        )
+                                        ),
                                       )}
                                     </div>
                                   )}
